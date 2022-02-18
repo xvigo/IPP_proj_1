@@ -11,6 +11,6 @@ require_once __DIR__. '/Parser.php';
 
 CLAProcessor::process($argc, $argv);
 Parser::parseAndPrintXML();
-exit(ReturnValues::SUCCESS);
 
+exit(ReturnValues::SUCCESS);
 ?>

@@ -8,10 +8,18 @@
 require_once __DIR__. '/IppXmlWriter.php';
 require_once __DIR__. '/ReturnValues.php';
 
+/**
+ * Class for checking lexical and syntactic correctness of IPPcode22 
+ * given on standard output and printing its XML representation to standard output.
+ * If program isn't correct, program is terminated with coresponding return value (see ReturnValues.php).
+ */
 final class Parser
 {
     private static $xml;
-
+    /**
+     * Performs syntax and lexical analysis of IPPcode22 given on standard input 
+     * and prints its XML representation to standard output.
+     */
     static function parseAndPrintXML()
     {
         Self::$xml = new IppXmlWriter();
@@ -161,16 +169,20 @@ final class Parser
         Self::$xml->xmlPrint();
     }
 
-    // OPERANDS
+    // OPERANDS REGEXES
     private const O_VAR = '/^(LF|TF|GF)@[a-zA-Z_\-$&%\*!\?][0-9a-zA-Z_\-$&%\*!\?]*$/';
     private const O_LABEL = "/^[a-zA-Z_\-$&%\*!\?][0-9a-zA-Z_\-$&%\*!\?]*$/";
     
-    // VARIABLE TYPES
+    // VARIABLE TYPES REGEXES
     private const T_INT = "/^int@[+-]?[0-9]+$/";
     private const T_STRING = '/^string@(\\\\[0-9]{3}|[^\s#\\\\])*$/u';
     private const T_BOOL = "/^bool@(true|false)$/";
     private const T_NIL = "/^nil@nil$/";
     
+    /**
+     * Check lexical and syntax corectness of variable operand and add its XML representation into XMLWriter.
+     * @param $operand - string which should represent variable
+     */
     private static function parse_VAR($operand)
     {
         if (preg_match(Self::O_VAR, $operand))
@@ -183,6 +195,10 @@ final class Parser
         }
     }
 
+    /**
+     * Check lexical and syntax corectness of symbol operand and add its XML representation into XMLWriter.
+     * @param $operand - string which should represent symbol
+     */
     private static function parse_SYMB($operand)
     {
         if (preg_match(Self::T_INT, $operand))
@@ -214,7 +230,11 @@ final class Parser
             exit(ReturnValues::OPCODE_ERR);
         }
     }
-
+    
+    /**
+     * Check lexical and syntax corectness of label operand and add its XML representation into XMLWriter.
+     * @param $operand - string which should represent label
+     */
     private static function parse_LABEL($operand)
     {
         if (preg_match(Self::O_LABEL, $operand))
@@ -227,6 +247,10 @@ final class Parser
         }
     }
 
+    /**
+     * Check lexical and syntax corectness of type operand and add its XML representation into XMLWriter.
+     * @param $operand - string which should represent variable
+     */
     private static function parse_TYPE($operand)
     {
         switch($operand)
@@ -242,6 +266,11 @@ final class Parser
         }
     }
 
+    /**
+     * Check number of operands in array, if it doesn't match exit with OPCODE_ERR return value.
+     * @param operands - array containing all instructions operands
+     * @param count - number of excpected operands
+     */
     private static function check_operands_count($operands, $count)
     {
         if (count($operands) != $count)
