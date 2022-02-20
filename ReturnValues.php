@@ -20,6 +20,6 @@ final class ReturnValues
     // parser 
     public const HEADER_ERR = 21; // invalid or missing header in IPPcode22 source code
 	public const OPCODE_ERR = 22; // unknown or invalid opcode in IPPcode22 source code
-	public const OTHER_ERROR = 23; // other lexical or syntactic error in IPPcode22 source code
+	public const OTHER_ERR = 23; // other lexical or syntactic error in IPPcode22 source code
 }
 ?>
