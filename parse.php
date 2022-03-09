@@ -4,8 +4,8 @@
  * @author Vilem Gottwald
  */
 
-require_once __DIR__. '/CLAProcessor.php';
-require_once __DIR__. '/Parser.php';
+require_once __DIR__. '/parse-lib/CLAProcessor.php';
+require_once __DIR__. '/parse-lib/Parser.php';
 
 // ini_set('display_errors', 'stderr');
 
