@@ -7,6 +7,8 @@
 
 require_once __DIR__. '/IppXmlWriter.php';
 require_once __DIR__. '/ReturnValues.php';
+require_once __DIR__. '/Stats.php';
+
 
 /**
  * Class for checking lexical and syntactic correctness of IPPcode22 
@@ -16,18 +18,26 @@ require_once __DIR__. '/ReturnValues.php';
 final class Parser
 {
     private static $xml;
+    private static $stats;
     /**
      * Performs syntax and lexical analysis of IPPcode22 given on standard input 
      * and prints its XML representation to standard output.
      */
-    static function parseAndPrintXML()
+    static function parseAndPrintXML($config)
     {
         Self::$xml = new IppXmlWriter();
+        Self::$stats = new Stats($config);
         $headerFound = false;
+
+
 
         while($line = fgets(STDIN))
         {
             $comment_splitted = explode("#", $line, 2); // separate comment from code
+            if(strlen($comment_splitted[0]) < strlen($line))
+            {
+                Self::$stats->addComment();
+            }
             $line = $comment_splitted[0]; // save code without comment
 
             $separated = preg_split("/[\n\t ]+/", $line, 0, PREG_SPLIT_NO_EMPTY); // separate opcode and operands
@@ -53,13 +63,20 @@ final class Parser
             }
 
             $separated[0] = strtoupper($separated[0]);
+            Self::$stats->addInstruction();
             switch($separated[0])
             {
                 // no operand
+                case "RETURN":
+                    Self::check_operands_count($separated, 1);
+                    Self::$stats->addReturn();
+                    Self::$xml->startInstruction($separated[0]);
+                    Self::$xml->endInstruction();
+                    continue 2;
+
                 case "CREATEFRAME":
                 case "PUSHFRAME":
                 case "POPFRAME":
-                case "RETURN":
                 case "BREAK":
                     Self::check_operands_count($separated, 1);
                     Self::$xml->startInstruction($separated[0]);
@@ -73,18 +90,25 @@ final class Parser
                     Self::$xml->startInstruction($separated[0]);
                     Self::parse_VAR($separated[1]);
                     Self::$xml->endInstruction();
-
                     continue 2;
                 
                 // <label>
-                case "CALL":
+
                 case "LABEL":
-                case "JUMP":
                     Self::check_operands_count($separated, 2);
+                    Self::$stats->addLabel($separated[1]);
                     Self::$xml->startInstruction($separated[0]);
                     Self::parse_LABEL($separated[1]);
                     Self::$xml->endInstruction();
+                    continue 2;
 
+                case "CALL":
+                case "JUMP":
+                    Self::check_operands_count($separated, 2);
+                    Self::$stats->addJump($separated[1]);
+                    Self::$xml->startInstruction($separated[0]);
+                    Self::parse_LABEL($separated[1]);
+                    Self::$xml->endInstruction();
                     continue 2;
                 
                 // <symb>
@@ -96,7 +120,6 @@ final class Parser
                     Self::$xml->startInstruction($separated[0]);
                     Self::parse_SYMB($separated[1]);
                     Self::$xml->endInstruction();
-
                     continue 2;
                 
                 // <var> <symb>
@@ -110,7 +133,6 @@ final class Parser
                     Self::parse_VAR($separated[1]);
                     Self::parse_SYMB($separated[2]);
                     Self::$xml->endInstruction();
-
                     continue 2;
 
                 // <var> <type>
@@ -120,7 +142,6 @@ final class Parser
                     Self::parse_VAR($separated[1]);
                     Self::parse_TYPE($separated[2]);
                     Self::$xml->endInstruction();
-
                     continue 2;
 
                 // <var> <symb1> <symb2>
@@ -143,19 +164,18 @@ final class Parser
                     Self::parse_SYMB($separated[2]);
                     Self::parse_SYMB($separated[3]);
                     Self::$xml->endInstruction();
-
                     continue 2;
 
                 // <label> <symb1> <symb2>
                 case "JUMPIFEQ":
                 case "JUMPIFNEQ":
                     Self::check_operands_count($separated, 4);
+                    Self::$stats->addJump($separated[1]);
                     Self::$xml->startInstruction($separated[0]);
                     Self::parse_LABEL($separated[1]);
                     Self::parse_SYMB($separated[2]);
                     Self::parse_SYMB($separated[3]);
                     Self::$xml->endInstruction();
-
                     continue 2;
                 // invalid command
                 default:
@@ -167,6 +187,11 @@ final class Parser
         Self::$xml->endProgram();
         Self::$xml->endDocument();
         Self::$xml->xmlPrint();
+        Self::$stats->endProgram();
+        if($config)
+        {
+            Self::$stats->printStats();
+        }
     }
 
     // OPERANDS REGEXES

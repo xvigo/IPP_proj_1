@@ -25,16 +25,83 @@ final class CLAProcessor
         {
             return;
         }
-        else if ($argc == 2 && $argv[1] == "--help")
+        else if (in_array("--help", $argv))
         {
-            echo "Usage: php8.1 parse.php \n";
-            echo "Reads IPPcode22 source code from standard input, checks its lexical and syntactic correctness and prints its XML representation to standard output.\n";
-            exit(ReturnValues::SUCCESS);
+            if($argc == 2)
+            {
+                echo "Usage: php8.1 parse.php \n";
+                echo "Reads IPPcode22 source code from standard input, checks its lexical and syntactic correctness and prints its XML representation to standard output.\n";
+                exit(ReturnValues::SUCCESS);
+            }
+            else
+            {
+                fwrite(STDERR, "ERROR: '--help' can't be used with any other parameter");
+                exit(ReturnValues::PARAMETER_ERR);
+            }
         }
         else
+        {               
+            $config = [];
+
+            array_shift($argv);
+            $path = Self::processsFileArg($config, $argv[0]);
+            array_shift($argv);
+
+            foreach($argv as $arg)
+            {
+                switch ($arg) {
+                    case '--loc':
+                    case '--comments':
+                    case '--labels':
+                    case '--jumps':
+                    case '--fwjumps':
+                    case '--backjumps':
+                    case '--badjumps':
+                            $config[$path][] = trim($arg, "-");
+                            break;
+                    
+                    default:
+                        $path = Self::processsFileArg($config, $arg);
+                        break;
+                }
+            }
+            if (Self::arrayHasDuplicities($config))
+            {
+                exit(ReturnValues::OUTPUT_FILE_ERR);
+            }
+            return $config;
+
+        }
+    }
+    static private function processsFileArg($config, $arg)
+    {
+        if(preg_match("/^--file=/", $arg))
+        {
+            $splitted = explode("=", $arg, 2);
+            $file = $splitted[1];
+            Self::checkFilePath($file);
+            $config[$file] = array();
+            return $file;
+        }
+        else
+        {
+            echo $arg , "\n";
+            exit(ReturnValues::PARAMETER_ERR);
+        }
+    }
+
+    static private function checkFilePath($path)
+    {
+        if (substr($path, -1) == "/" or is_dir($path) or !is_writeable(dirname($path)))
         {
             exit(ReturnValues::PARAMETER_ERR);
         }
     }
+
+    static private function arrayHasDuplicities($array) 
+    {
+        return count($array) != count(array_unique($array));
+    }
 }
+
 ?>

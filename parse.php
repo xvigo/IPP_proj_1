@@ -9,8 +9,7 @@ require_once __DIR__. '/parse-lib/Parser.php';
 
 // ini_set('display_errors', 'stderr');
 
-CLAProcessor::process($argc, $argv);
-Parser::parseAndPrintXML();
-
+$config = CLAProcessor::process($argc, $argv);
+Parser::parseAndPrintXML($config);
 exit(ReturnValues::SUCCESS);
 ?>
