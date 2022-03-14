@@ -29,27 +29,25 @@ final class Parser
         Self::$stats = new Stats($config);
         $headerFound = false;
 
-
-
         while($line = fgets(STDIN))
         {
-            $comment_splitted = explode("#", $line, 2); // separate comment from code
-            if(strlen($comment_splitted[0]) < strlen($line))
-            {
+            $commentSplitted = explode("#", $line, 2); // separate comment from code
+            if(strlen($commentSplitted[0]) < strlen($line))
+            { // if line had comment
                 Self::$stats->addComment();
             }
-            $line = $comment_splitted[0]; // save code without comment
+            $line = $commentSplitted[0]; // save code without comment
 
-            $separated = preg_split("/[\n\t ]+/", $line, 0, PREG_SPLIT_NO_EMPTY); // separate opcode and operands
+            $OpcodeAndOperands = preg_split("/[\n\t ]+/", $line, 0, PREG_SPLIT_NO_EMPTY); // separate opcode and operands
             
-            if(empty($separated))
-            { // skip empty lines
+            if(empty($OpcodeAndOperands))
+            {
                 continue;
             }
 
             if (!$headerFound)
             {
-                if(strcasecmp($separated[0], ".IPPcode22") == 0)
+                if(strcasecmp($OpcodeAndOperands[0], ".IPPcode22") == 0)
                 {
                     $headerFound = true;
                     Self::$xml->startDocument();
@@ -62,138 +60,142 @@ final class Parser
                 }
             }
 
-            $separated[0] = strtoupper($separated[0]);
-            Self::$stats->addInstruction();
-            switch($separated[0])
-            {
-                // no operand
-                case "RETURN":
-                    Self::check_operands_count($separated, 1);
-                    Self::$stats->addReturn();
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-
-                case "CREATEFRAME":
-                case "PUSHFRAME":
-                case "POPFRAME":
-                case "BREAK":
-                    Self::check_operands_count($separated, 1);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-                
-                // <var>
-                case "DEFVAR":
-                case "POPS":
-                    Self::check_operands_count($separated, 2);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_VAR($separated[1]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-                
-                // <label>
-
-                case "LABEL":
-                    Self::check_operands_count($separated, 2);
-                    Self::$stats->addLabel($separated[1]);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_LABEL($separated[1]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-
-                case "CALL":
-                case "JUMP":
-                    Self::check_operands_count($separated, 2);
-                    Self::$stats->addJump($separated[1]);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_LABEL($separated[1]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-                
-                // <symb>
-                case "PUSHS":
-                case "WRITE":
-                case "EXIT":
-                case "DPRINT":
-                    Self::check_operands_count($separated, 2);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_SYMB($separated[1]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-                
-                // <var> <symb>
-                case "MOVE":
-                case "INT2CHAR":
-                case "STRLEN":
-                case "TYPE":
-                case "NOT":
-                    Self::check_operands_count($separated, 3);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_VAR($separated[1]);
-                    Self::parse_SYMB($separated[2]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-
-                // <var> <type>
-                case "READ":
-                    Self::check_operands_count($separated, 3);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_VAR($separated[1]);
-                    Self::parse_TYPE($separated[2]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-
-                // <var> <symb1> <symb2>
-                case "ADD":
-                case "SUB":
-                case "MUL":
-                case "IDIV":
-                case "LT":
-                case "GT":
-                case "EQ":
-                case "AND":
-                case "OR":
-                case "STRI2INT":
-                case "CONCAT":
-                case "GETCHAR":
-                case "SETCHAR":
-                    Self::check_operands_count($separated, 4);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_VAR($separated[1]);
-                    Self::parse_SYMB($separated[2]);
-                    Self::parse_SYMB($separated[3]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-
-                // <label> <symb1> <symb2>
-                case "JUMPIFEQ":
-                case "JUMPIFNEQ":
-                    Self::check_operands_count($separated, 4);
-                    Self::$stats->addJump($separated[1]);
-                    Self::$xml->startInstruction($separated[0]);
-                    Self::parse_LABEL($separated[1]);
-                    Self::parse_SYMB($separated[2]);
-                    Self::parse_SYMB($separated[3]);
-                    Self::$xml->endInstruction();
-                    continue 2;
-                // invalid command
-                default:
-                    exit(ReturnValues::OPCODE_ERR);
-
-            } // switch end
-        } // while end
-
-        Self::$xml->endProgram();
-        Self::$xml->endDocument();
-        Self::$xml->xmlPrint();
+            $OpcodeAndOperands[0] = strtoupper($OpcodeAndOperands[0]);
+            Self::parseCode($OpcodeAndOperands);
+        }
         Self::$stats->endProgram();
         if($config)
         {
             Self::$stats->printStats();
         }
+
+        Self::$xml->endProgram();
+        Self::$xml->endDocument();
+        Self::$xml->xmlPrint();
+
+
     }
 
+    private static function parseCode($codeArr)
+    {
+        Self::$stats->addInstruction();
+        switch($codeArr[0])
+        {
+            // no operand
+            case "RETURN":
+                Self::check_operands_count($codeArr, 1);
+                Self::$stats->addReturn();
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::$xml->endInstruction();
+                break;
+
+            case "CREATEFRAME":
+            case "PUSHFRAME":
+            case "POPFRAME":
+            case "BREAK":
+                Self::check_operands_count($codeArr, 1);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::$xml->endInstruction();
+                break;
+            
+            // <var>
+            case "DEFVAR":
+            case "POPS":
+                Self::check_operands_count($codeArr, 2);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_VAR($codeArr[1]);
+                Self::$xml->endInstruction();
+                break;
+            
+            // <label>
+            case "LABEL":
+                Self::check_operands_count($codeArr, 2);
+                Self::$stats->addLabel($codeArr[1]);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_LABEL($codeArr[1]);
+                Self::$xml->endInstruction();
+                break;
+
+            case "CALL":
+            case "JUMP":
+                Self::check_operands_count($codeArr, 2);
+                Self::$stats->addJump($codeArr[1]);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_LABEL($codeArr[1]);
+                Self::$xml->endInstruction();
+                break;
+            
+            // <symb>
+            case "PUSHS":
+            case "WRITE":
+            case "EXIT":
+            case "DPRINT":
+                Self::check_operands_count($codeArr, 2);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_SYMB($codeArr[1]);
+                Self::$xml->endInstruction();
+                break;
+            
+            // <var> <symb>
+            case "MOVE":
+            case "INT2CHAR":
+            case "STRLEN":
+            case "TYPE":
+            case "NOT":
+                Self::check_operands_count($codeArr, 3);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_VAR($codeArr[1]);
+                Self::parse_SYMB($codeArr[2]);
+                Self::$xml->endInstruction();
+                break;
+
+            // <var> <type>
+            case "READ":
+                Self::check_operands_count($codeArr, 3);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_VAR($codeArr[1]);
+                Self::parse_TYPE($codeArr[2]);
+                Self::$xml->endInstruction();
+                break;
+
+            // <var> <symb1> <symb2>
+            case "ADD":
+            case "SUB":
+            case "MUL":
+            case "IDIV":
+            case "LT":
+            case "GT":
+            case "EQ":
+            case "AND":
+            case "OR":
+            case "STRI2INT":
+            case "CONCAT":
+            case "GETCHAR":
+            case "SETCHAR":
+                Self::check_operands_count($codeArr, 4);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_VAR($codeArr[1]);
+                Self::parse_SYMB($codeArr[2]);
+                Self::parse_SYMB($codeArr[3]);
+                Self::$xml->endInstruction();
+                break;
+
+            // <label> <symb1> <symb2>
+            case "JUMPIFEQ":
+            case "JUMPIFNEQ":
+                Self::check_operands_count($codeArr, 4);
+                Self::$stats->addJump($codeArr[1]);
+                Self::$xml->startInstruction($codeArr[0]);
+                Self::parse_LABEL($codeArr[1]);
+                Self::parse_SYMB($codeArr[2]);
+                Self::parse_SYMB($codeArr[3]);
+                Self::$xml->endInstruction();
+                break;
+            // invalid command
+            default:
+                exit(ReturnValues::OPCODE_ERR);
+        }    
+    }   
     // OPERANDS REGEXES
     private const O_VAR = '/^(LF|TF|GF)@[a-zA-Z_\-$&%\*!\?][0-9a-zA-Z_\-$&%\*!\?]*$/';
     private const O_LABEL = "/^[a-zA-Z_\-$&%\*!\?][0-9a-zA-Z_\-$&%\*!\?]*$/";
