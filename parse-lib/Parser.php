@@ -72,10 +72,13 @@ final class Parser
         Self::$xml->endProgram();
         Self::$xml->endDocument();
         Self::$xml->xmlPrint();
-
-
     }
 
+    /**
+     * Parses instruction code given as opcode and operands in array
+     * @param array $codeArr instruction and operands stored in array
+     * on lexical or syntax error exits with corresponding error code
+     */
     private static function parseCode($codeArr)
     {
         Self::$stats->addInstruction();
